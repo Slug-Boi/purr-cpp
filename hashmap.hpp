@@ -17,28 +17,27 @@ static constexpr size_t BUCKET_THRESH = 3;
 // REDO WITH G++ 15 features
 template <typename K>
 concept Hashable = requires(K k) {
-  { hash<K>{}(k) } -> convertible_to<size_t>; 
-  { k == k }       -> convertible_to<bool>;
+  { std::hash<K>{}(k) } -> std::convertible_to<size_t>; 
+  { k == k }       -> std::convertible_to<bool>;
 };
 
-using namespace std;
 namespace hashmap {
   
   template <typename K, typename V>
   class HashMap {
       private: 
-        vector<vector<pair<K,V>>> buckets;
+        std::vector<std::vector<std::pair<K,V>>> buckets;
         size_t size_;
         int64_t version;
 
-      vector<pair<K,V>>& get_bucket(const K& key) {
+        std::vector<std::pair<K,V>>& get_bucket(const K& key) {
             size_t index = hash_mixed(key) % buckets.size(); 
-            vector<pair<K,V>>& bucket = buckets[index];
+            std::vector<std::pair<K,V>>& bucket = buckets[index];
             return bucket;
       }
 
       uint64_t hash_mixed(const K& key) {  
-          return splitmix64(hash<K>{}(key));
+          return splitmix64(std::hash<K>{}(key));
       }
 
       static uint64_t splitmix64(const size_t x) {
@@ -49,25 +48,25 @@ namespace hashmap {
       }
       
       // const overload
-      const vector<pair<K,V>>& get_bucket(const K& key) const {
+      const std::vector<std::pair<K,V>>& get_bucket(const K& key) const {
             size_t index = hash_mixed(key) % buckets.size();
-            vector<pair<K,V>>& bucket = buckets[index];
+            std::vector<std::pair<K,V>>& bucket = buckets[index];
             return bucket;
       }
 
       public:
         HashMap(size_t size=1) {
-            buckets = vector<vector<pair<K,V>>>(size);
+            buckets = std::vector<std::vector<std::pair<K,V>>>(size);
             size = 0;
         }
 
         void rehash(size_t new_size) {
-            vector<vector<pair<K,V>>> new_buckets = vector<vector<pair<K,V>>>(new_size);
+            std::vector<std::vector<std::pair<K,V>>> new_buckets = std::vector<std::vector<std::pair<K,V>>>(new_size);
 
             for (auto& bucket : buckets ) {
                 for (auto& kv : bucket) {
                     size_t index = hash_mixed(kv.first) % new_buckets.size();
-                    new_buckets[index].emplace_back(move(kv));
+                    new_buckets[index].emplace_back(std::move(kv));
                 }
             }
 
@@ -87,7 +86,7 @@ namespace hashmap {
                 rehash(buckets.size() * 2);
             }
 
-            vector<pair<K,V>>& bucket = get_bucket(key); 
+            std::vector<std::pair<K,V>>& bucket = get_bucket(key); 
 
             bucket.emplace_back(key, V{});
             size_++;
@@ -96,15 +95,15 @@ namespace hashmap {
         }
 
         void put(const K& key, V value) {
-            vector<pair<K,V>>& bucket = get_bucket(key);
+            std::vector<std::pair<K,V>>& bucket = get_bucket(key);
             
             for (auto& kv : bucket ) {
                 if (kv.first == key) {
-                    kv.second = move(value); 
+                    kv.second = std::move(value); 
                     return;
                 }
             }
-            bucket.emplace_back(key, move(value));
+            bucket.emplace_back(key, std::move(value));
             size_++;
 
             if (size_ * SIZE_THRESH > buckets.size() * BUCKET_THRESH) {
@@ -115,7 +114,7 @@ namespace hashmap {
         }
 
         bool putIfAbsent(const K& key, V value) {
-            vector<pair<K,V>>& bucket = get_bucket(key);
+            std::vector<std::pair<K,V>>& bucket = get_bucket(key);
             
             for (auto& kv : bucket ) {
                 if (kv.first == key) {
@@ -123,7 +122,7 @@ namespace hashmap {
                 }
             }
             
-            bucket.emplace_back(key, move(value));
+            bucket.emplace_back(key, std::move(value));
             size_++;
 
             if (size_ * SIZE_THRESH > buckets.size() * BUCKET_THRESH) {
@@ -154,25 +153,25 @@ namespace hashmap {
         }
 
         void remove(const K& key) {
-            vector<pair<K,V>>& bucket = get_bucket(key);
+            std::vector<std::pair<K,V>>& bucket = get_bucket(key);
             int before = bucket.size();
-            bucket.erase(remove_if(bucket.begin(), bucket.end(), [&key](const pair<K, V>& kv) { return kv.first == key; } ), bucket.end());
+            bucket.erase(remove_if(bucket.begin(), bucket.end(), [&key](const std::pair<K, V>& kv) { return kv.first == key; } ), bucket.end());
             if (bucket.size() != before ) 
                 size_--;
         }
 
         bool contains(const K& key) const {
-            const vector<pair<K,V>>& bucket = get_bucket(key);
+            const std::vector<std::pair<K,V>>& bucket = get_bucket(key);
 
-            return any_of(bucket.begin(), bucket.end(), [&key](const pair<K,V>& kv) { return kv.first == key;}); 
+            return any_of(bucket.begin(), bucket.end(), [&key](const std::pair<K,V>& kv) { return kv.first == key;}); 
         }
 
         size_t size() const {
             return size_;
         }
 
-        vector<K> keys() const {
-            vector<K> collected;
+        std::vector<K> keys() const {
+            std::vector<K> collected;
             collected.reserve(size_);
             
             for (auto& bucket : buckets ) {
@@ -183,8 +182,8 @@ namespace hashmap {
             return collected;
         }
 
-        vector<V> values() const {
-            vector<V> collected;
+        std::vector<V> values() const {
+            std::vector<V> collected;
             collected.reserve(size_);
             
             for (auto& bucket : buckets ) {
@@ -195,9 +194,9 @@ namespace hashmap {
             return collected;
         }
 
-        vector<pair<K,V>> pairs() const {
+          std::vector<std::pair<K,V>> pairs() const {
             
-            vector<pair<K,V>> collected;
+            std::vector<std::pair<K,V>> collected;
             collected.reserve(size_);
             
             for (auto& bucket : buckets ) {
@@ -218,7 +217,7 @@ namespace hashmap {
         }
 
         void clear() {
-            buckets = vector<vector<pair<K,V>>>(buckets.size());
+            buckets = std::vector<std::vector<std::pair<K,V>>>(buckets.size());
         }
 
         void merge(const HashMap& other, bool overwrite=true) {
